@@ -1,0 +1,359 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Video.js Playlist UI - Default</title>
+    <link href="https://cdn.jsdelivr.net/npm/video.js@8.23.7/dist/video-js.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/videojs-playlist-ui@5.0.0/dist/videojs-playlist-ui.min.css" rel="stylesheet" />
+    
+    <link href="examples.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div>
+      <input type="search" id="site-search" placeholder="Movie..." />
+      <input id="keyword" placeholder="keyword.." />
+      <input id="min" placeholder="min.." />
+      <input id="max" placeholder="max.." />
+      <input id="series" placeholder="series.." />
+    </div>
+    <div class="player-container" id="movie_player">
+      <video id="video" class="video-js" controls autoplay>
+        <!-- <source src="http://vjs.zencdn.net/v/oceans.mp4" type="video/mp4" />
+        <source src="http://vjs.zencdn.net/v/oceans.webm" type="video/webm" /> -->
+      </video>
+
+      <div class="vjs-playlist">
+        <!--
+        The contents of this element will be filled based on the
+        currently loaded playlist
+      --></div>
+    </div>
+    <!-- this ytd-watch-flexy is for observer the changing to tell note extension update the quillEditor -->
+    <ytd-watch-flexy>
+      <h1 id="video_title">Title of movie</h1>
+    </ytd-watch-flexy>
+    <!-- use this key in content.js of Timestamp extension to know more about why there is this element: 2026-04-28 15:41:21 -->
+    <h2 id="owner-name">
+      <a>Life is an adventure</a>
+      <!-- <a>A consistency mind can change everything</a> -->
+    </h2>
+
+    <script src="//cdn.jsdelivr.net/npm/video.js@8.23.7/dist/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/videojs-playlist@5.2.0/dist/videojs-playlist.min.js"></script>
+    <!-- <script src="node_modules/videojs-overlay/dist/videojs-overlay.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/videojs-playlist-ui@5.0.0/dist/videojs-playlist-ui.min.js"></script>
+    <script src="./object-watch.js"></script>
+    <script src="//cdn.sc.gl/videojs-hotkeys/0.2/videojs.hotkeys.min.js"></script>
+    <script>
+      // function hostOshiData() {
+      //   var t = "oshi_video_".concat(e),
+      //     n = localStorage.getItem(t);
+
+      // }
+      function concateChild() {
+        videoElement = document.querySelector("#video");
+        timestamp = document.querySelector("#timestamp-container");
+        videoElement.appendChild(timestamp);
+        timestamp.style.zIndex = 9999;
+      }
+      function handleOverlay() {
+        var t = 0,
+          n = function () {
+            t++;
+
+            videoElement = document.querySelector("#video");
+            timestamp = document.querySelector("#timestamp-container");
+
+            // 2026-04-28 15:41:21: avoid loop in set timeout if not found elements above.
+            (videoElement && timestamp) || t >= 10
+              ? concateChild()
+              : setTimeout(n, 500 + 100 * t);
+          };
+        setTimeout(n, 300);
+      }
+      function removeTitleBar() {
+        document
+          .querySelector("#timestamp-title-bar")
+          .classList.remove("d-flex");
+        document.querySelector("#timestamp-title-bar").style.cssText =
+          "display: none !important;";
+        document.querySelector("#timestamp-container").style.height =
+          document.querySelector("#timestamp-container").offsetHeight -
+          20 +
+          "px";
+        qlEditor = document.querySelector("#timestamp-content");
+        qlEditor.style.cssText = "height: calc(100% - 2px) !important;";
+      }
+      function handleRemoveTitlebar() {
+        var t = 0,
+          n = function () {
+            t++;
+
+            videoElement = document.querySelector("#video");
+            timestamp = document.querySelector("#timestamp-container");
+            titleBar = document.querySelector("#timestamp-title-bar");
+            // 2026-04-28 15:41:21: avoid loop in set timeout if not found elements above.
+
+            (videoElement && timestamp && titleBar) || t >= 10
+              ? removeTitleBar()
+              : setTimeout(n, 50 + 10 * t);
+          };
+        setTimeout(n, 30);
+        // use 50 10 30 instead hundreds to there is no the appear then disappear on window
+      }
+      function isFocused() {
+        var qlEditor = document.querySelector(".ql-editor");
+        var videoElement = document.querySelector("video");
+        console.log(
+          "Is Quill editor focused?",
+          document.activeElement === qlEditor,
+        );
+
+        console.log(
+          "Is video element focused?",
+          document.activeElement === videoElement,
+        );
+        // return document.activeElement === qlEditor;
+        setTimeout(isFocused, 2000);
+      }
+
+      function transferVideoelement() {
+        var videoElement = document.querySelector("video");
+        videoElement.focus();
+      }
+
+      async function queryToBackend(movieName, range) {
+        try {
+          // var urlQuery = new URL("http://192.168.1.200:3000/query");
+          var urlQuery = new URL("https://backend-210398985503.europe-west1.run.app/query");
+          urlQuery.searchParams.set("v", movieName);
+          urlQuery.searchParams.set("min", range[0]);
+          urlQuery.searchParams.set("max", range[1]);
+          urlQuery.searchParams.set("keyword", keyword.value);
+          urlQuery.searchParams.set("series", series.value);
+
+          // const response = await fetch(
+          //   "http://localhost:3000/query?v=UrbanMiracleDoctor&min=105&max=105",
+          // );
+          const response = await fetch(urlQuery);
+          const data = await response.json();
+          // console.log(data);
+          // window.hihi = "haha";
+          return data; // after query, data now is an array of json object, can access to an item using data[i].ep
+        } catch (error) {
+          console.error("Fetch failed:", error);
+        }
+      }
+
+      function Eposide(name, url, subtitlePaths) {
+        textTractArray = [];
+        subtitlePaths.forEach((item, index) => {
+          textTractArray.push({
+            kind: "captions",
+            label: item.split(".")[1],
+            src: item,
+            default: item.split(".")[1] === "vi",
+          });
+        });
+        return {
+          name: name,
+          description: "this is an adventure, so feel free to try !",
+          duration: 45,
+          sources: [{ src: url, type: "video/mp4" }],
+          thumbnail: [
+            {
+              srcset: "thumbnals/flower.jpg",
+              type: "image/jpeg",
+              media: "(min-width: 200px;)",
+            },
+            {
+              src: "thumbnals/flower.jpg",
+            },
+          ],
+          textTracks: textTractArray,
+        };
+      }
+
+      async function createPlaylist(movieName, range) {
+        subtitlePaths = [];
+        arraySource = [];
+        console.log("before query");
+        querryArray = await queryToBackend(movieName, range);
+        console.log("success query to backend", querryArray);
+
+        videoplaylist = new Array();
+        if (keyword.value == "") {
+          for (let i = 0; i < querryArray.length; i++) {
+            url = querryArray[i].url;
+            name = querryArray[i].movie + "_EP" + querryArray[i].ep.toString();
+            window.queryData.push({
+              name: name,
+              content: querryArray[i].fullContent,
+            });
+            subtitlePaths =
+              querryArray[i].subtitle === null
+                ? []
+                : querryArray[i].subtitle.split("\n");
+            var myMovieEp = Eposide(name, url, subtitlePaths);
+
+            videoplaylist.push(myMovieEp);
+          }
+        } else {
+          for (let i = 0; i < querryArray.length; i++) {
+            url = querryArray[i].outputFileName;
+            name = querryArray[i].outputFileName
+              .split("/")
+              .at(-1)
+              .split(".")[0];
+            window.queryData.push({
+              name: name,
+              content: querryArray[i].content,
+            });
+
+            subtitlePaths =
+              querryArray[i].subtitle === null
+                ? []
+                : querryArray[i].subtitle.split("\n");
+            var myMovieEp = Eposide(name, url, subtitlePaths);
+
+            videoplaylist.push(myMovieEp);
+          }
+        }
+        // if there is no item, set new, if exist, delete the old (because there is limit in storage of localStorage, also, the query info is different between each time and key must be unique)
+        localStorage.setItem("queryData", JSON.stringify(window.queryData));
+        localStorage.setItem("channelName", window.channelName);
+        localStorage.setItem("firstLoadingIe", window.firstLoadingIe);
+        console.log("Just public this info:", window.queryData);
+        return videoplaylist;
+      }
+
+      async function mainThread(moviename, keyword, min, max, series) {
+        window.player = videojs("video");
+        myPlaylist = await createPlaylist(moviename, [min, max]);
+        console.log("success create playlist", myPlaylist);
+        player.playlist(myPlaylist);
+
+        player.playlist.autoadvance(0);
+        // add hotkey function
+        player.ready(function () {
+          this.hotkeys({
+            volumeStep: 0.1,
+            seekStep: 5,
+            enableModifiersForNumbers: false,
+            enableFullscreen: true,
+            enableInactiveFocus: true,
+            enableVolumeScroll: false,
+            customKeys: {
+              // Create custom hotkeys
+              ctrlNKey: {
+                key: function (event) {
+                  // play next with shift N
+                  return event.shiftKey && event.which === 78;
+                },
+                handler: function (player, options, event) {
+                  // // Using mute as an example
+                  // if (options.enableMute) {
+                  //   player.muted(!player.muted());
+                  // }
+                  player.playlist.next();
+                },
+              },
+              ctrlPKey: {
+                key: function (event) {
+                  // play next with shift P
+                  return event.shiftKey && event.which === 80;
+                },
+                handler: function (player, options, event) {
+                  player.playlist.previous();
+                },
+              },
+            },
+          });
+        });
+
+        player.playlistUi({
+          playOnSelect: false,
+        });
+
+        player.textTrackSettings.setValues({
+          backgroundColor: "#000",
+          backgroundOpacity: "0.5",
+          fontPercent: 1, // 150% size
+          edgeStyle: "uniform",
+        });
+        player.textTrackSettings.updateDisplay();
+
+        player.on("playlistitem", function () {
+          console.log("playlist item changed");
+
+          // 1. handle note editor
+          document.title =
+            player.playlistMenu.items[player.playlist.currentItem()].item.name;
+          document.querySelector("#video_title").textContent = document.title;
+          // handle overlay
+          handleOverlay();
+          // remove this class to make the display: none get effected
+          if (localStorage.getItem("phone") == "yes") {
+            handleRemoveTitlebar();
+            // when 'injected stylesheet' mean: that .css is from a physical style.css but it is not from extension scope, not in current real.
+          } 
+          // else {
+          //   handleRemoveTitlebar();
+          // }
+          // console.log(document.querySelector("#timestamp-title-bar"));
+        });
+
+        // todo: import caption when confirm the subtitles are .srt format
+        // await importCaption();
+      }
+    </script>
+
+    <script>
+      window.queryData = [];
+      const searchInput = document.querySelector('input[type="search"]');
+      const min = document.querySelector("#min");
+      const max = document.querySelector("#max");
+      const series = document.querySelector("#series");
+      const keyword = document.querySelector("#keyword");
+
+      searchInput.addEventListener("search", (event) => {
+        // Both methods retrieve the current search term
+        // range is a must, but maybe no need to fill in search box, if not exist, will fill a range that is so large: 1 - 1000
+        if (keyword.value != "") {
+          // This is for review steps at segmentations, notice the <a> tag
+          document.querySelector("#owner-name > a").textContent =
+            "A consistency mind can change everything";
+          window.channelName = "A consistency mind can change everything";
+        } else {
+          window.channelName = "Life is an adventure"; // use the channelName for create the timestamp when in extension when it still not defined, although channelName is captured in somewhere but at that local function maybe it still not defined.
+        }
+
+        // condition for detecting this is phone
+        const fullWidth = screen.width;
+        if (fullWidth < 1000) {
+          alert("This is phone");
+          localStorage.setItem("phone", "yes");
+        } else {
+          localStorage.setItem("phone", "no");
+        }
+        window.firstLoadingIe = "yes";
+        var searchMin = min.value;
+        var searchMax = max.value;
+        if (series.value == "" && searchMin == "" && searchMax == "") {
+          searchMin = 1;
+          searchMax = 1000;
+        }
+
+        const value = event.target.value;
+        mainThread(
+          value,
+          keyword.value,
+          parseInt(searchMin),
+          parseInt(searchMax),
+          series.value,
+        );
+        console.log("Search term:", value);
+      });
+    </script>
+  </body>
+</html>
