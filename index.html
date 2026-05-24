@@ -160,7 +160,7 @@
             kind: "captions",
             label: item.split(".").at(-2),
             src: item,
-            default: item.split(".")[1] === "vi",
+            default: item.split(".").at(-2) === "vi",
           });
         });
         return {
