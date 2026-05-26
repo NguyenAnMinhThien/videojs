@@ -229,6 +229,7 @@
             videoplaylist.push(myMovieEp);
           }
         }
+        
         // if there is no item, set new, if exist, delete the old (because there is limit in storage of localStorage, also, the query info is different between each time and key must be unique)
         localStorage.setItem("queryData", JSON.stringify(window.queryData));
         localStorage.setItem("channelName", window.channelName);
