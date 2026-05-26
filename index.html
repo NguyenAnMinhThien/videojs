@@ -197,6 +197,7 @@
             window.queryData.push({
               name: name,
               content: querryArray[i].fullContent,
+              Additional1: querryArray[i].Additional1,
             });
             subtitlePaths =
               querryArray[i].subtitle === null
@@ -333,6 +334,8 @@
             "A consistency mind can change everything";
           window.channelName = "A consistency mind can change everything";
         } else {
+          document.querySelector("#owner-name > a").textContent =
+            "Life is an adventure"; //must exist to avoid the current page are in consistency.. but press Enter for keyword == "", then it will keep this title and classify data to wrong channel
           window.channelName = "Life is an adventure"; // use the channelName for create the timestamp when in extension when it still not defined, although channelName is captured in somewhere but at that local function maybe it still not defined.
         }
 
